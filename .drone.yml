@@ -1,0 +1,108 @@
+﻿kind: pipeline
+type: docker
+name: default
+
+trigger:
+  event:
+    - tag
+
+concurrency:
+  limit: 1
+
+workspace:
+  path: /drone/src
+
+steps:
+  - name: checkout submodule
+    image: alpine/git
+    commands:
+      - git submodule update --init --recursive
+  - name: checkout tag
+    image: alpine/git
+    commands:
+      - cd bat
+      - git fetch --all --tags
+      - git checkout tags/${DRONE_TAG}
+    depends_on:
+      - "checkout submodule"
+  - name: cargo build
+    image: rust:latest
+    commands:
+      - cd bat
+      - cargo build --release --target x86_64-unknown-linux-gnu
+      - cd target/x86_64-unknown-linux-gnu/release
+    depends_on:
+      - "checkout tag"
+  - name: verify
+    image: rust:latest
+    commands:
+      - mkdir /tmp/verify && cd /tmp/verify && echo "test" > ./verify
+      - /drone/src/bat/target/x86_64-unknown-linux-gnu/release/bat --plain ./verify
+      - lines=$(/drone/src/bat/target/x86_64-unknown-linux-gnu/release/bat --plain ./verify)
+      - if test $lines != test; then exit 1; fi
+    depends_on:
+      - "cargo build"
+  - name: build slackware package
+    image: vbatts/slackware:14.2
+    commands:
+      - mkdir -p dist/usr/sbin
+      - cp bat/target/x86_64-unknown-linux-gnu/release/bat ./dist/usr/sbin/bat
+      - cp -R ./usr ./dist
+      - chmod +x ./dist/usr/sbin/bat
+      - cd dist
+      - makepkg -l y -c y ../unraid-bat-${DRONE_TAG}.txz
+    depends_on:
+      - "verify"
+  - name: prepare release
+    image: vbatts/slackware:14.2
+    commands:
+      - echo "bat ${DRONE_TAG} - built@$(date '+%FT%TZ') [Drone ${DRONE_SYSTEM_VERSION}]" > ./release_note
+      - cat ./release_note
+    depends_on:
+      - "build slackware package"
+  - name: publish gitea release
+    image: plugins/gitea-release
+    settings:
+      api_key:
+        from_secret: GITEA_KEY
+      base_url: https://git.panaetius.co.uk
+      files:
+        - ./unraid-bat-${DRONE_TAG}.txz
+      checksum:
+        - md5
+      title: ${DRONE_TAG}
+      note: ./release_note
+      file_exists: "skip"
+      when:
+        event: tag
+    depends_on:
+      - "prepare release"
+  - name: publish github release
+    image: plugins/github-release
+    settings:
+      api_key:
+        from_secret: GITHUB_KEY
+      files:
+        - ./unraid-bat-${DRONE_TAG}.txz
+      checksum:
+        - md5
+      title: ${DRONE_TAG}
+      note: ./release_note
+      file_exists: "skip"
+      when:
+        event: tag
+    depends_on:
+      - "prepare release"
+  - name: slack
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: BUILD_STATUS_SLACK_WEBHOOK
+      username: drone
+    when:
+      status:
+        - "success"
+        - "failure"
+    depends_on:
+      - "publish gitea release"
+      - "publish github release"
