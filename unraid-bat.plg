@@ -7,7 +7,7 @@
   <!ENTITY gitURL     "https://github.com/&org;/&name;">
   <!ENTITY pluginURL  "&gitURL;/raw/master/&name;.plg">
   <!ENTITY releaseURL "&gitURL;/releases/download/&version;/&name;-&version;.txz">
-  <!ENTITY md5        "b49a912a3702d5704b6cecfcd8564d33">
+  <!ENTITY md5        "275af43e0fad8098a6da994b6383044b">
   <!ENTITY plugin     "/boot/config/plugins/&name;">
   <!ENTITY emhttp     "/usr/local/emhttp/plugins/&name;">
 ]>
@@ -15,8 +15,8 @@
 
 <CHANGES>
 
-###2022-05-05
-- Initial release - bat v0.10.1
+### 2022-05-06
+- Initial release - bat v0.20.0
 
 </CHANGES>
 
