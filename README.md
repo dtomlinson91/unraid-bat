@@ -2,7 +2,7 @@
 
 This is the repository for the unraid bat plugin.
 
-<img src="https://git.panaetius.co.uk/dtomlinson91/unraid-bat/raw/branch/master/assets/unraid-bat.svg"/>
+<img src="https://git.panaetius.co.uk/dtomlinson91/unraid-bat/raw/branch/main/assets/unraid-bat.svg"/>
 
 ## description
 
